@@ -1,1 +1,1 @@
-"""ORM models for gateway database tables."""
+"""HuggingFace model wrappers used by the gateway."""
