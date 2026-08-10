@@ -44,6 +44,7 @@ async def _run_shadow_prediction(
                 Prediction(
                     model_version=shadow_version,
                     input_hash=input_hash,
+                    text=text,
                     output={"label": result["label"], "score": result["score"]},
                     latency_ms=result["latency_ms"],
                     cached=False,

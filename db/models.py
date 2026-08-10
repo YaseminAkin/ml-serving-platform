@@ -81,6 +81,7 @@ class Prediction(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     model_version: Mapped[str] = mapped_column(String, nullable=False)
     input_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    text: Mapped[str] = mapped_column(String, nullable=False)
     output: Mapped[dict] = mapped_column(JSONB, nullable=False)
     latency_ms: Mapped[float] = mapped_column(Float, nullable=False)
     cached: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)

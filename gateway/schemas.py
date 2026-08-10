@@ -42,3 +42,11 @@ class ModelResponse(BaseModel):
     path: str
     status: ModelStatus
     created_at: datetime
+
+
+class CacheMetricsResponse(BaseModel):
+    """Response body for GET /metrics/cache."""
+
+    hit_rate: float
+    total_hits: int
+    total_misses: int

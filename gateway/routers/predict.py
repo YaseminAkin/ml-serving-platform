@@ -1,12 +1,14 @@
 """POST /predict endpoint."""
 
 import hashlib
+import time
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.models import Prediction
 from db.session import get_db
+from gateway import cache
 from gateway.auth import require_api_key
 from gateway.models.model import predict
 from gateway.schemas import PredictRequest, PredictResponse
@@ -24,20 +26,34 @@ async def predict_endpoint(
     db: AsyncSession = Depends(get_db),
     _: None = Depends(require_api_key),
 ) -> PredictResponse:
-    """Run sentiment prediction, logging it and mirroring to shadow if enabled."""
-    result = predict(request.text)
+    """Run sentiment prediction, using cache, logging, and shadow mirroring."""
     input_hash = hashlib.sha256(request.text.encode()).hexdigest()
 
     production = await get_production_model_version(db)
     model_version = production.version if production else DEFAULT_MODEL_VERSION
 
+    start = time.perf_counter()
+    cached_result = await cache.get_cached_prediction(model_version, input_hash)
+    is_cached = cached_result is not None
+
+    if is_cached:
+        result = {**cached_result, "latency_ms": (time.perf_counter() - start) * 1000}
+    else:
+        result = predict(request.text)
+        await cache.set_cached_prediction(
+            model_version,
+            input_hash,
+            {"label": result["label"], "score": result["score"]},
+        )
+
     db.add(
         Prediction(
             model_version=model_version,
             input_hash=input_hash,
+            text=request.text,
             output={"label": result["label"], "score": result["score"]},
             latency_ms=result["latency_ms"],
-            cached=False,
+            cached=is_cached,
         )
     )
     await db.commit()
@@ -53,6 +69,6 @@ async def predict_endpoint(
         label=result["label"],
         score=result["score"],
         model_version=model_version,
-        cached=False,
+        cached=is_cached,
         latency_ms=result["latency_ms"],
     )
