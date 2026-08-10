@@ -1,30 +1,12 @@
 """Tests for eval/scorer.py and eval/worker.py."""
 
-import os
-
 import pytest
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from db.models import Prediction
 from eval import scorer, worker
 
 API_KEY_HEADER = {"X-API-Key": "dev"}
-
-ASYNC_DATABASE_URL = os.environ.get(
-    "DATABASE_URL",
-    "postgresql+asyncpg://mlserving:mlserving@localhost:5432/mlserving",
-)
-
-
-@pytest.fixture
-async def db_session():
-    """A standalone async session, self-contained to this test's event loop."""
-    engine = create_async_engine(ASYNC_DATABASE_URL)
-    session_maker = async_sessionmaker(engine, expire_on_commit=False)
-    async with session_maker() as session:
-        yield session
-    await engine.dispose()
 
 
 def test_score_confidence_reads_model_output_score():

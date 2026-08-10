@@ -5,8 +5,11 @@ import logging
 import os
 
 import redis.asyncio as redis
+from dotenv import load_dotenv
 
 logger = logging.getLogger(__name__)
+
+load_dotenv()
 
 REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379")
 CACHE_TTL_SECONDS = 3600

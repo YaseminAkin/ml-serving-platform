@@ -5,10 +5,13 @@ import logging
 import os
 
 import httpx
+from dotenv import load_dotenv
 
 from db.models import Prediction
 
 logger = logging.getLogger(__name__)
+
+load_dotenv()
 
 CONFIDENCE_METHOD = "confidence"
 LLM_JUDGE_METHOD = "llm_judge"

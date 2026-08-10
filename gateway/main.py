@@ -3,6 +3,7 @@
 from fastapi import FastAPI
 
 from gateway import cache
+from gateway.routers import eval as eval_router
 from gateway.routers import models, predict
 from gateway.schemas import CacheMetricsResponse
 
@@ -10,6 +11,7 @@ app = FastAPI(title="ML Serving Gateway", version="0.1.0")
 
 app.include_router(predict.router)
 app.include_router(models.router)
+app.include_router(eval_router.router)
 
 
 @app.get("/health")

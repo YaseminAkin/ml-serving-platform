@@ -104,3 +104,20 @@ class EvalResult(Base):
     created_at: Mapped[datetime] = mapped_column(
         server_default=func.now(), nullable=False
     )
+
+
+class DriftAlert(Base):
+    """A drift alert: rolling confidence mean diverged from the baseline."""
+
+    __tablename__ = "drift_alerts"
+    __table_args__ = (Index("ix_drift_alerts_model_version", "model_version"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    model_version: Mapped[str] = mapped_column(String, nullable=False)
+    baseline_mean: Mapped[float] = mapped_column(Float, nullable=False)
+    rolling_mean: Mapped[float] = mapped_column(Float, nullable=False)
+    delta: Mapped[float] = mapped_column(Float, nullable=False)
+    threshold: Mapped[float] = mapped_column(Float, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        server_default=func.now(), nullable=False
+    )

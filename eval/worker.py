@@ -9,6 +9,7 @@ import asyncio
 import logging
 import os
 
+from dotenv import load_dotenv
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -22,6 +23,8 @@ from eval.scorer import (
 )
 
 logger = logging.getLogger(__name__)
+
+load_dotenv()
 
 POLL_INTERVAL_SECONDS = float(os.environ.get("EVAL_POLL_INTERVAL_SECONDS", "5"))
 BATCH_SIZE = int(os.environ.get("EVAL_BATCH_SIZE", "20"))

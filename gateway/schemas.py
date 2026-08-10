@@ -50,3 +50,17 @@ class CacheMetricsResponse(BaseModel):
     hit_rate: float
     total_hits: int
     total_misses: int
+
+
+class AlertResponse(BaseModel):
+    """Response body for GET /alerts entries."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    model_version: str
+    baseline_mean: float
+    rolling_mean: float
+    delta: float
+    threshold: float
+    created_at: datetime
