@@ -64,3 +64,26 @@ class AlertResponse(BaseModel):
     delta: float
     threshold: float
     created_at: datetime
+
+
+class EvalSummaryEntry(BaseModel):
+    """Per-version entry in GET /eval/summary."""
+
+    model_version: str
+    prediction_count: int
+    avg_confidence_score: float | None
+    drift_status: str
+
+
+class EvalPredictionEntry(BaseModel):
+    """One row in the GET /eval/predictions browser."""
+
+    id: int
+    model_version: str
+    text: str
+    label: str
+    score: float
+    cached: bool
+    timestamp: datetime
+    confidence_score: float | None
+    llm_judge_score: float | None

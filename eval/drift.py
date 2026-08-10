@@ -27,6 +27,11 @@ CHECK_INTERVAL_SECONDS = float(os.environ.get("DRIFT_CHECK_INTERVAL_SECONDS", "3
 WINDOW_SIZE = int(os.environ.get("DRIFT_WINDOW_SIZE", "500"))
 DRIFT_THRESHOLD = float(os.environ.get("DRIFT_THRESHOLD", "0.1"))
 
+# Fraction of DRIFT_THRESHOLD at which a version enters the "warning" tier
+# on its way to "alert" — used by GET /eval/summary, not by the persisted
+# drift_alerts table (which only ever records actual alert-tier events).
+WARNING_RATIO = 0.5
+
 
 async def _model_versions_with_scores(db: AsyncSession) -> list[str]:
     """Distinct model versions that have at least one confidence score."""
@@ -109,6 +114,34 @@ async def _check_model_version(
         DRIFT_THRESHOLD,
     )
     return alert
+
+
+async def get_drift_status(
+    db: AsyncSession, model_version: str
+) -> tuple[str, float | None, float | None, float | None]:
+    """Live ok/warning/alert status for GET /eval/summary.
+
+    Recomputed on request rather than read from drift_alerts, since that
+    table is only ever written on an hourly cadence by run_forever() and
+    would leave the summary endpoint stale by up to an hour otherwise.
+    Returns (status, baseline_mean, rolling_mean, delta); the means/delta
+    are None when there isn't yet a full window of scored predictions.
+    """
+    if await _scored_count(db, model_version) < WINDOW_SIZE:
+        return "ok", None, None, None
+
+    baseline_mean = await _windowed_mean(db, model_version, ascending=True)
+    rolling_mean = await _windowed_mean(db, model_version, ascending=False)
+    delta = abs(rolling_mean - baseline_mean)
+
+    if delta > DRIFT_THRESHOLD:
+        status = "alert"
+    elif delta > DRIFT_THRESHOLD * WARNING_RATIO:
+        status = "warning"
+    else:
+        status = "ok"
+
+    return status, baseline_mean, rolling_mean, delta
 
 
 async def run_once(db: AsyncSession) -> list[DriftAlert]:
