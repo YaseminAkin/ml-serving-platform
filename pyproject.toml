@@ -13,7 +13,7 @@ dependencies = [
     "transformers>=4.40.0",
     "torch>=2.2.0",
     "redis>=5.0.0",
-    "sqlalchemy>=2.0.0",
+    "sqlalchemy[asyncio]>=2.0.0",
     "alembic>=1.13.0",
     "asyncpg>=0.29.0",
     "psycopg2-binary>=2.9.9",
@@ -37,7 +37,7 @@ dev = [
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["gateway*", "registry*", "eval*"]
+include = ["gateway*", "registry*", "eval*", "db*"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
@@ -47,6 +47,7 @@ addopts = "--tb=short"
 [tool.ruff]
 line-length = 88
 target-version = "py311"
+extend-exclude = ["db/migrations/versions"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP"]
@@ -54,6 +55,7 @@ select = ["E", "F", "I", "UP"]
 [tool.black]
 line-length = 88
 target-version = ["py311"]
+extend-exclude = "db/migrations/versions"
 
 [tool.mypy]
 python_version = "3.11"

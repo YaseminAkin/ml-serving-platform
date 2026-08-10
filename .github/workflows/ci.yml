@@ -20,10 +20,27 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: mlserving
+          POSTGRES_PASSWORD: mlserving
+          POSTGRES_DB: mlserving
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U mlserving"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql+asyncpg://mlserving:mlserving@localhost:5432/mlserving
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
       - run: pip install -e ".[dev]"
+      - run: alembic upgrade head
       - run: pytest tests/ --cov=gateway --cov=registry --cov=eval

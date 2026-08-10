@@ -2,11 +2,12 @@
 
 from fastapi import FastAPI
 
-from gateway.routers import predict
+from gateway.routers import models, predict
 
 app = FastAPI(title="ML Serving Gateway", version="0.1.0")
 
 app.include_router(predict.router)
+app.include_router(models.router)
 
 
 @app.get("/health")
