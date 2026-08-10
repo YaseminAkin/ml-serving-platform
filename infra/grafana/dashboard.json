@@ -1,0 +1,114 @@
+{
+  "title": "ML Serving Platform",
+  "uid": "ml-serving-platform",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "timezone": "browser",
+  "time": { "from": "now-6h", "to": "now" },
+  "refresh": "10s",
+  "annotations": {
+    "list": [
+      {
+        "datasource": { "type": "postgres", "uid": "postgresql" },
+        "enable": true,
+        "iconColor": "red",
+        "name": "Drift alerts",
+        "target": {
+          "rawSql": "SELECT created_at AS time, model_version || ' drift: delta=' || round(delta::numeric,3) || ' (threshold=' || round(threshold::numeric,3) || ')' AS text, 'drift' AS tags FROM drift_alerts ORDER BY created_at",
+          "format": "table"
+        }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Requests/sec by model version",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "fieldConfig": {
+        "defaults": { "unit": "reqps" },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum(rate(request_count_total[1m])) by (model_version)",
+          "legendFormat": "{{model_version}}"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Inference latency (p50/p95/p99)",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "fieldConfig": {
+        "defaults": { "unit": "s" },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "histogram_quantile(0.50, sum(rate(inference_latency_seconds_bucket[5m])) by (le))",
+          "legendFormat": "p50"
+        },
+        {
+          "refId": "B",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "histogram_quantile(0.95, sum(rate(inference_latency_seconds_bucket[5m])) by (le))",
+          "legendFormat": "p95"
+        },
+        {
+          "refId": "C",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "histogram_quantile(0.99, sum(rate(inference_latency_seconds_bucket[5m])) by (le))",
+          "legendFormat": "p99"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Cache hit rate",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "fieldConfig": {
+        "defaults": { "unit": "percentunit", "min": 0, "max": 1 },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum(rate(cache_hit_total[5m])) / sum(rate(request_count_total[5m]))",
+          "legendFormat": "hit rate"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Drift alerts",
+      "type": "table",
+      "datasource": { "type": "postgres", "uid": "postgresql" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "postgres", "uid": "postgresql" },
+          "format": "table",
+          "rawSql": "SELECT created_at AS \"Time\", model_version AS \"Version\", round(baseline_mean::numeric,4) AS \"Baseline\", round(rolling_mean::numeric,4) AS \"Rolling\", round(delta::numeric,4) AS \"Delta\", round(threshold::numeric,4) AS \"Threshold\" FROM drift_alerts ORDER BY created_at DESC LIMIT 50"
+        }
+      ]
+    }
+  ]
+}

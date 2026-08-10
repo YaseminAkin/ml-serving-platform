@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.models import Prediction
 from db.session import get_db
-from gateway import cache
+from gateway import cache, metrics
 from gateway.auth import require_api_key
 from gateway.models.model import predict
 from gateway.schemas import PredictRequest, PredictResponse
@@ -38,6 +38,7 @@ async def predict_endpoint(
 
     if is_cached:
         result = {**cached_result, "latency_ms": (time.perf_counter() - start) * 1000}
+        metrics.cache_hit_total.inc()
     else:
         result = predict(request.text)
         await cache.set_cached_prediction(
@@ -45,6 +46,9 @@ async def predict_endpoint(
             input_hash,
             {"label": result["label"], "score": result["score"]},
         )
+        metrics.inference_latency_seconds.observe(result["latency_ms"] / 1000)
+
+    metrics.request_count.labels(model_version=model_version, status_code="200").inc()
 
     db.add(
         Prediction(

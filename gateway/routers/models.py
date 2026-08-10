@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from db.models import ModelVersion
 from db.session import get_db
 from gateway.auth import require_api_key
+from gateway.metrics import sync_active_model_version_gauge
 from gateway.schemas import ModelCreateRequest, ModelResponse
 from registry.registry import (
     DuplicateModelVersionError,
@@ -75,7 +76,7 @@ async def promote_model(
 ) -> ModelVersion:
     """Promote a model version to production, demoting the incumbent."""
     try:
-        return await promote_model_version(db, model_id)
+        promoted = await promote_model_version(db, model_id)
     except ModelVersionNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
@@ -84,3 +85,6 @@ async def promote_model(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail=str(exc)
         ) from exc
+
+    await sync_active_model_version_gauge(db)
+    return promoted
