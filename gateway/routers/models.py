@@ -9,10 +9,12 @@ from gateway.auth import require_api_key
 from gateway.schemas import ModelCreateRequest, ModelResponse
 from registry.registry import (
     DuplicateModelVersionError,
+    InvalidStateTransitionError,
     ModelVersionNotFoundError,
     create_model_version,
     list_model_versions,
     promote_model_version,
+    set_shadow_model_version,
 )
 
 router = APIRouter()
@@ -32,6 +34,25 @@ async def register_model(
             db, request.name, request.version, request.path
         )
     except DuplicateModelVersionError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail=str(exc)
+        ) from exc
+
+
+@router.put("/models/{model_id}/shadow", response_model=ModelResponse)
+async def shadow_model(
+    model_id: int,
+    db: AsyncSession = Depends(get_db),
+    _: None = Depends(require_api_key),
+) -> ModelVersion:
+    """Mark a model version as the shadow candidate, demoting the incumbent."""
+    try:
+        return await set_shadow_model_version(db, model_id)
+    except ModelVersionNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
+        ) from exc
+    except (DuplicateModelVersionError, InvalidStateTransitionError) as exc:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail=str(exc)
         ) from exc

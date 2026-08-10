@@ -15,6 +15,10 @@ class ModelVersionNotFoundError(Exception):
     """Raised when a model version id does not exist."""
 
 
+class InvalidStateTransitionError(Exception):
+    """Raised when a requested status transition isn't allowed."""
+
+
 async def create_model_version(
     db: AsyncSession, name: str, version: str, path: str
 ) -> ModelVersion:
@@ -71,6 +75,59 @@ async def promote_model_version(db: AsyncSession, model_id: int) -> ModelVersion
         await db.rollback()
         raise DuplicateModelVersionError(
             "Another version was promoted to production concurrently"
+        ) from exc
+
+    await db.refresh(target)
+    return target
+
+
+async def get_production_model_version(db: AsyncSession) -> ModelVersion | None:
+    """Look up the current production model version, if any."""
+    result = await db.execute(
+        select(ModelVersion).where(ModelVersion.status == ModelStatus.PRODUCTION)
+    )
+    return result.scalar_one_or_none()
+
+
+async def get_shadow_model_version(db: AsyncSession) -> ModelVersion | None:
+    """Look up the current shadow model version, if any."""
+    result = await db.execute(
+        select(ModelVersion).where(ModelVersion.status == ModelStatus.SHADOW)
+    )
+    return result.scalar_one_or_none()
+
+
+async def set_shadow_model_version(db: AsyncSession, model_id: int) -> ModelVersion:
+    """Mark a model version as the shadow candidate, demoting the incumbent.
+
+    A version currently in production can't be turned into a shadow — that
+    would leave the system without a production version.
+    """
+    target = await db.get(ModelVersion, model_id)
+    if target is None:
+        raise ModelVersionNotFoundError(f"Model version {model_id} not found")
+    if target.status == ModelStatus.PRODUCTION:
+        raise InvalidStateTransitionError(
+            "Cannot make the current production version a shadow version"
+        )
+
+    result = await db.execute(
+        select(ModelVersion)
+        .where(ModelVersion.status == ModelStatus.SHADOW)
+        .with_for_update()
+    )
+    current_shadow = result.scalar_one_or_none()
+    if current_shadow is not None and current_shadow.id != target.id:
+        current_shadow.status = ModelStatus.STAGING
+
+    target.status = ModelStatus.SHADOW
+
+    try:
+        await db.commit()
+    except IntegrityError as exc:
+        await db.rollback()
+        raise DuplicateModelVersionError(
+            "Another version was set as shadow concurrently"
         ) from exc
 
     await db.refresh(target)

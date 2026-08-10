@@ -28,6 +28,7 @@ class ModelStatus(enum.StrEnum):
     STAGING = "staging"
     PRODUCTION = "production"
     ARCHIVED = "archived"
+    SHADOW = "shadow"
 
 
 class ModelVersion(Base):
@@ -41,6 +42,12 @@ class ModelVersion(Base):
             "status",
             unique=True,
             postgresql_where=text("status = 'production'"),
+        ),
+        Index(
+            "uq_models_single_shadow",
+            "status",
+            unique=True,
+            postgresql_where=text("status = 'shadow'"),
         ),
     )
 

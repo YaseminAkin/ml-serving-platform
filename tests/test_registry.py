@@ -73,3 +73,42 @@ def test_models_endpoints_require_api_key(client):
     response = client.get("/models")
 
     assert response.status_code == 401
+
+
+def test_shadow_sets_status_to_shadow(client):
+    created = _register(client).json()
+
+    response = client.put(f"/models/{created['id']}/shadow", headers=API_KEY_HEADER)
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "shadow"
+
+
+def test_shadow_demotes_previous_shadow_to_staging(client):
+    v1 = _register(client, version="v1").json()
+    v2 = _register(client, version="v2").json()
+
+    client.put(f"/models/{v1['id']}/shadow", headers=API_KEY_HEADER)
+    client.put(f"/models/{v2['id']}/shadow", headers=API_KEY_HEADER)
+
+    statuses = {
+        m["version"]: m["status"]
+        for m in client.get("/models", headers=API_KEY_HEADER).json()
+    }
+    assert statuses["v1"] == "staging"
+    assert statuses["v2"] == "shadow"
+
+
+def test_shadow_production_version_returns_409(client):
+    created = _register(client).json()
+    client.put(f"/models/{created['id']}/promote", headers=API_KEY_HEADER)
+
+    response = client.put(f"/models/{created['id']}/shadow", headers=API_KEY_HEADER)
+
+    assert response.status_code == 409
+
+
+def test_shadow_nonexistent_id_returns_404(client):
+    response = client.put("/models/999999/shadow", headers=API_KEY_HEADER)
+
+    assert response.status_code == 404
