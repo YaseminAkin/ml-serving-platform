@@ -14,3 +14,4 @@ build/
 htmlcov/
 mlops_project_build_plan.html
 project1_mlops_platform_brief.md
+.DS_Store

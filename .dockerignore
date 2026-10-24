@@ -16,3 +16,6 @@ htmlcov/
 infra/
 mlops_project_build_plan.html
 project1_mlops_platform_brief.md
+.env
+.env.*
+.DS_Store
